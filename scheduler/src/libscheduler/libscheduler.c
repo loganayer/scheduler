@@ -16,9 +16,28 @@
 */
 typedef struct _job_t
 {
+	int id;
+	int priority;
+	int arrivalTime;
+	int timeInitialized; //for calculating remaining time
+	int runTime;
+	int remainingTime; 
 
+
+	
 } job_t;
 
+typedef struct _scheduler_t
+{
+	int cores;
+	int waitTime;
+	int responseTime;
+	int turnAroundTime;
+	int jobsCompleted;
+	job_t** array;
+} scheduler_t;
+
+scheduler_t* scheduler;
 
 /**
   Initalizes the scheduler.
