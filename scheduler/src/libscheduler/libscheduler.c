@@ -34,7 +34,8 @@ typedef struct _scheduler_t
 	int responseTime;
 	int turnAroundTime;
 	int jobsCompleted;
-	job_t** array;
+	job_t** currentCore;
+	scheme_t scheme;
 } scheduler_t;
 
 scheduler_t* scheduler;
@@ -53,6 +54,14 @@ scheduler_t* scheduler;
 */
 void scheduler_start_up(int cores, scheme_t scheme)
 {
+    scheduler.waitTime = 0;
+    scheduler.jobsCompleted = 0;
+    scheduler.responseTime = 0;
+    scheduler.turnAroundTime = 0;
+    scheduler = (scheduler_t *)malloc(sizeof(scheduler_t));
+    scheduler.currentCore = (job_t **)malloc(cores * sizeof(job_t *));
+    scheduler.cores = cores;
+    scheduler.scheme= scheme;
 
 }
 
