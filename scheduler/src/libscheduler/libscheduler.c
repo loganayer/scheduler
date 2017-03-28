@@ -54,6 +54,7 @@ scheduler_t* scheduler;
 */
 void scheduler_start_up(int cores, scheme_t scheme)
 {
+	//reset values on start up
     scheduler.waitTime = 0;
     scheduler.jobsCompleted = 0;
     scheduler.responseTime = 0;
@@ -62,6 +63,8 @@ void scheduler_start_up(int cores, scheme_t scheme)
     scheduler.currentCore = (job_t **)malloc(cores * sizeof(job_t *));
     scheduler.cores = cores;
     scheduler.scheme= scheme;
+	
+    //initialize which scheme {FCFS = 0, SJF, PSJF, PRI, PPRI, RR} by using priqueue
 
 }
 
