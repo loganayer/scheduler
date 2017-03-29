@@ -18,6 +18,7 @@ typedef struct _job_t
 	int interupted_time; //time that a process gets interupted by another process
 	int running;
 	int first;
+	int new;
 } job_t;
 
 typedef struct _scheduler_t
@@ -40,25 +41,43 @@ scheduler_t* scheduler;
 // First Come First Serve
 int fcfs(const void * a, const void * b) //DONE
 {
-	return -1;
-	/*cast to job type*
+	/*cast to job type*/
 	job_t* joba = (job_t*)a;
 	job_t* jobb = (job_t*)b;
 
-	if (joba->initial_time < jobb->initial_time)
+	if (joba->initial_time > jobb->initial_time)
 	{
 		return -1;
 	}
-	else if (joba->initial_time > jobb->initial_time)
+	else if (joba->initial_time < jobb->initial_time)
 	{
 		return 1;
 	}
 	else
 	{
 		return 0;
-	}*/
+	}
 }
+// First Come First Serve
+int rr(const void * a, const void * b) //DONE
+{
+	/*cast to job type*/
+	job_t* joba = (job_t*)a;
+	job_t* jobb = (job_t*)b;
 
+	if (joba-> new > jobb->new)
+	{
+		return -1;
+	}
+	else if (joba->new < jobb->new)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
 // Shortest Job First
 int sjf(const void * a, const void * b) //TODO
 {
@@ -177,7 +196,7 @@ void scheduler_start_up(int cores, scheme_t scheme)
 
 	else if(scheduler -> scheme == RR)
 	{
-		priqueue_init(&scheduler->queue, fcfs);
+		priqueue_init(&scheduler->queue, rr);
 	}
 }
 
@@ -209,6 +228,7 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
 	job->remaining_time = running_time;
 	job->interupted_time = 0;
 	job->running = -1;
+	job->new = time;
 
 
 	// used for determining which function will get preempted next
@@ -260,7 +280,6 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
 int scheduler_job_finished(int core_id, int job_number, int time)
 {
 	scheduler->jobsCompleted++;
-	scheduler->currentCore[core_id] = NULL;
 
 	job_t* temp;
 
@@ -272,6 +291,8 @@ int scheduler_job_finished(int core_id, int job_number, int time)
 			temp = priqueue_remove_at(&scheduler->queue, i);
 		}
 	}
+
+	scheduler->currentCore[core_id] = NULL;
 
 	//update the time stuff
 	int turn = time - temp->initial_time;
@@ -311,6 +332,32 @@ int scheduler_job_finished(int core_id, int job_number, int time)
  */
 int scheduler_quantum_expired(int core_id, int time)
 {
+	 job_t* temp =	scheduler->currentCore[core_id];
+	 temp-> running = -1;
+   temp-> new = time;
+
+	 //pop the job out of the queue
+ 	for (int i = 0; i < priqueue_size(&scheduler->queue); i++)
+ 	{
+ 		if (((job_t*)priqueue_at(&scheduler->queue, i)) == temp)
+ 		{
+ 			temp = priqueue_remove_at(&scheduler->queue, i);
+ 		}
+ 	}
+
+	priqueue_offer(&scheduler->queue, temp);
+
+	for (int i = 0; i < priqueue_size(&scheduler->queue); i++)
+	{
+		if(	scheduler->currentCore[core_id] == NULL ||
+			((job_t*)priqueue_at(&scheduler->queue, i))->running == -1)
+		{
+			((job_t*)priqueue_at(&scheduler->queue, i))->running = core_id;
+			((job_t*)priqueue_at(&scheduler->queue, i))->first = time;
+			scheduler->currentCore[core_id] = (job_t*)priqueue_at(&scheduler->queue, i);
+			return ((job_t*)priqueue_at(&scheduler->queue, i))->id;
+		}
+	}
 	return -1;
 }
 
