@@ -12,11 +12,12 @@ typedef struct _job_t
 {
 	int id;
 	int priority;
-	int initial_time; 
-	int running_time; 
-	int remaining_time; 
+	int initial_time;
+	int running_time;
+	int remaining_time;
 	int interupted_time; //time that a process gets interupted by another process
 	int running;
+	int first;
 } job_t;
 
 typedef struct _scheduler_t
@@ -40,6 +41,22 @@ scheduler_t* scheduler;
 int fcfs(const void * a, const void * b) //DONE
 {
 	return -1;
+	/*cast to job type*
+	job_t* joba = (job_t*)a;
+	job_t* jobb = (job_t*)b;
+
+	if (joba->initial_time < jobb->initial_time)
+	{
+		return -1;
+	}
+	else if (joba->initial_time > jobb->initial_time)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}*/
 }
 
 // Shortest Job First
@@ -48,7 +65,7 @@ int sjf(const void * a, const void * b) //TODO
 	/*cast to job type*/
 	job_t* joba = (job_t*)a;
 	job_t* jobb = (job_t*)b;
-	
+
 	if (joba->running_time < jobb->running_time)
 	{
 		return -1;
@@ -69,7 +86,7 @@ int psjf(const void * a, const void * b) //TODO
 	/*cast to job type*/
 	job_t* joba = (job_t*)a;
 	job_t* jobb = (job_t*)b;
-	
+
 	if (joba->remaining_time < jobb->remaining_time)
 	{
 		return -1;
@@ -87,7 +104,20 @@ int psjf(const void * a, const void * b) //TODO
 //Fixed Priority
 int pri(const void * a, const void * b) //TODO
 {
-	return 0;
+	job_t* joba = (job_t*)a;
+	job_t* jobb = (job_t*)b;
+	if (joba->priority < jobb->priority)
+	{
+		return 1;
+	}
+	else if (joba->priority > jobb->priority)
+	{
+		return -1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 
@@ -166,7 +196,7 @@ Assumptions:
 @param running_time the total number of time units this job will run before it will be finished.
 @param priority the priority of the job. (The lower the value, the higher the priority.)
 @return index of currentCore job should be scheduled on
-@return -1 if no scheduling changes should be made. 
+@return -1 if no scheduling changes should be made.
  */
 int scheduler_new_job(int job_number, int time, int running_time, int priority)
 {
@@ -185,22 +215,23 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
 	int max_priority = -1;
 	int max_pid = -1;
 
-	
-	for( int i=0; i<scheduler->cores; i++ ) 
+
+	for( int i=0; i<scheduler->cores; i++ )
 	{
 
 		// assigns the job to an idle core
-		if(scheduler->currentCore[i] == NULL) 
+		if(scheduler->currentCore[i] == NULL)
 		{
 			scheduler->currentCore[i] = job; //assigns job to idle core
 			job->interupted_time = time; //sets interupted time to current time
-			
+
 			job->running = i;
+			job->first = time;
 			priqueue_offer(&scheduler->queue, job);
 			return i;
 		}
 
-		if ( ( scheduler->currentCore[i]->priority > max_priority ) || (scheduler->currentCore[i]->priority == max_priority && scheduler->currentCore[i]->id > max_pid ) ) 
+		if ( ( scheduler->currentCore[i]->priority > max_priority ) || (scheduler->currentCore[i]->priority == max_priority && scheduler->currentCore[i]->id > max_pid ) )
 		{
 			max_priority = scheduler->currentCore[i]->priority;
 			max_pid = scheduler->currentCore[i]->id;
@@ -230,9 +261,9 @@ int scheduler_job_finished(int core_id, int job_number, int time)
 {
 	scheduler->jobsCompleted++;
 	scheduler->currentCore[core_id] = NULL;
-	
+
 	job_t* temp;
-	
+
 	//pop the job out of the queue
 	for (int i = 0; i < priqueue_size(&scheduler->queue); i++)
 	{
@@ -241,17 +272,25 @@ int scheduler_job_finished(int core_id, int job_number, int time)
 			temp = priqueue_remove_at(&scheduler->queue, i);
 		}
 	}
-	
+
 	//update the time stuff
 	int turn = time - temp->initial_time;
-	
+	int wait = time - temp->initial_time - temp->running_time;
+	int response = temp->first - temp->initial_time;
+
+
 	scheduler->turnAroundTime += turn;
-	
+	scheduler->responseTime += response;
+	scheduler->waitTime += wait;
+
 	//loop through queue checking for running = -1
 	for (int i = 0; i < priqueue_size(&scheduler->queue); i++)
 	{
 		if (((job_t*)priqueue_at(&scheduler->queue, i))->running == -1)
 		{
+			((job_t*)priqueue_at(&scheduler->queue, i))->running = core_id;
+			((job_t*)priqueue_at(&scheduler->queue, i))->first = time;
+			scheduler->currentCore[core_id] = (job_t*)priqueue_at(&scheduler->queue, i);
 			return ((job_t*)priqueue_at(&scheduler->queue, i))->id;
 		}
 	}
@@ -266,7 +305,7 @@ int scheduler_job_finished(int core_id, int job_number, int time)
   the quantum expiration, return the job_number of the job that should be
   scheduled to run on currentCore core_id.
   @param core_id the zero-based index of the currentCore where the quantum has expired.
-  @param time the current time of the simulator. 
+  @param time the current time of the simulator.
   @return job_number of the job that should be scheduled on currentCore cord_id
   @return -1 if currentCore should remain idle
  */
@@ -284,7 +323,7 @@ Assumptions:
  */
 float scheduler_average_waiting_time()
 {
-	return scheduler->waitTime / scheduler->jobsCompleted;
+	return (1.0 * scheduler->waitTime) / scheduler->jobsCompleted;
 }
 
 
@@ -296,7 +335,7 @@ Assumptions:
  */
 float scheduler_average_turnaround_time()
 {
-	return scheduler->turnAroundTime / scheduler->jobsCompleted;
+	return (1.0 * scheduler->turnAroundTime) / scheduler->jobsCompleted;
 }
 
 
@@ -308,7 +347,7 @@ Assumptions:
  */
 float scheduler_average_response_time()
 {
-	return scheduler->responseTime / scheduler->jobsCompleted;
+	return (1.0 * scheduler->responseTime) / scheduler->jobsCompleted;
 }
 
 
@@ -331,7 +370,7 @@ void scheduler_clean_up()
   function will be called by the simulator after every call the simulator
   makes to your scheduler.
   In our provided output, we have implemented this function to list the jobs in the order they are to be scheduled. Furthermore, we have also listed the current state of the job (either running on a given core or idle). For example, if we have a non-preemptive algorithm and job(id=4) has began running, job(id=2) arrives with a higher priority, and job(id=1) arrives with a lower priority, the output in our sample output will be:
-  2(-1) 4(0) 1(-1)  
+  2(-1) 4(0) 1(-1)
   This function is not required and will not be graded. You may leave it
   blank if you do not find it useful.
  */
