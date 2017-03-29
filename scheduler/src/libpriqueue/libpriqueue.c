@@ -19,7 +19,104 @@
  */
 void priqueue_init(priqueue_t *q, int(*comparer)(const void *, const void *))
 {
+	/*initialize size to 0*/
+	q->size = 0;
+	
+	/*allocate array to hold our heap*/
+	q->heap = malloc(sizeof(void *) * 100);
+	
+	/*initialize using comparator passed in*/
+	q->comparator = comparer;
+}
 
+void swap(priqueue_t *q, int index1, int index2)
+{
+	/*temp variable to hold value at index1*/
+	void* temp = q->heap[index1];
+	
+	/*swap value at index1 with value at index2*/
+	q->heap[index1] = q->heap[index2];
+	
+	/*swap value at index2 with temp*/
+	q->heap[index2] = temp;
+}
+
+int bubbleUp(priqueue_t *q, int index)
+{
+	/*check if elem is root*/
+	if(index == 0)
+	{
+        /*elem is root so done*/
+		return 0;
+	}
+	else
+	{
+		/*get parent of elem*/
+		int parent = (index-1)/2;
+
+		/*compare parent and child*/
+		if(q->comparator(q->heap[index], q->heap[parent]) < 0)
+		{
+			/*swap if violation of max heap*/
+			swap(q, index, parent);
+			
+			/*then recurse to check parent*/
+			return bubbleUp(q, parent);
+		}
+		else
+		{
+			return index;
+		}
+	}
+}
+
+void trickleDown(priqueue_t *q, int index)
+{
+	/*get children indices*/
+	int left = 2*index + 1;
+    int right = 2*index + 2;
+
+	/*check if children*/
+    if (left >= q->size)
+	{
+		/*index is a leaf so we finish*/
+	}
+	else
+	{
+		/*set base case*/
+		int max = index;
+
+		/*compare with left child*/
+		if (q->comparator(q->heap[max], q->heap[left]) > 0)
+		{
+			/*update max index*/
+			max = left;
+		}
+		
+		/*next make sure there is a right child*/
+		if(right < q->size)
+		{
+			if (q->comparator(q->heap[max], q->heap[right]) > 0)
+			{
+				/*update max index*/
+				max = right;
+			}
+		}
+		else
+		{
+			/*no more children so we finish*/
+		}
+
+		/*compare if we need to swap*/
+		if(max != index)
+		{
+			/*need to swap*/
+			swap(q, max, index);
+			
+			/*recurse from swapped max*/
+			trickleDown(q, max);
+		}
+	}
 }
 
 
@@ -32,7 +129,14 @@ void priqueue_init(priqueue_t *q, int(*comparer)(const void *, const void *))
  */
 int priqueue_offer(priqueue_t *q, void *ptr)
 {
-	return -1;
+	/*add new element to back*/
+	q->heap[q->size] = ptr;
+
+	/*increase size*/
+	q->size++;
+
+	/*make sure heap property is still true*/
+	return bubbleUp(q, q->size-1);
 }
 
 
@@ -46,7 +150,14 @@ int priqueue_offer(priqueue_t *q, void *ptr)
  */
 void *priqueue_peek(priqueue_t *q)
 {
-	return NULL;
+	if (q->size == 0)
+	{
+		return NULL;
+	}
+	else
+	{
+		return q->heap[0];
+	}
 }
 
 
@@ -60,7 +171,14 @@ void *priqueue_peek(priqueue_t *q)
  */
 void *priqueue_poll(priqueue_t *q)
 {
-	return NULL;
+	if (q->size == 0)
+	{
+		return NULL;
+	}
+	else
+	{
+		return priqueue_remove_at(q, 0);
+	}
 }
 
 
@@ -75,7 +193,14 @@ void *priqueue_poll(priqueue_t *q)
  */
 void *priqueue_at(priqueue_t *q, int index)
 {
-	return NULL;
+	if (q->size == 0 || index >= q->size)
+	{
+		return NULL;
+	}
+	else
+	{
+		return q->heap[index];
+	}
 }
 
 
@@ -90,7 +215,32 @@ void *priqueue_at(priqueue_t *q, int index)
  */
 int priqueue_remove(priqueue_t *q, void *ptr)
 {
-	return 0;
+	int count = 0;
+	
+	/*probe all elements of array*/
+	for (int i = 0; i < q->size; i++)
+	{
+		/*we found a value so we must delete*/
+		if (ptr == q->heap[i])
+		{
+			/*replace with last value in array*/
+			q->heap[i] = q->heap[q->size-1];
+			
+			/*decrement size*/
+			q->size--;
+			
+			/*insure heap property still in order*/
+			trickleDown(q, i);
+			
+			/*decrement i so we check the again value as there
+			is a small chance this value was replaced with value*/
+			i--;
+			
+			count++;
+		}
+	}
+	
+	return count;
 }
 
 
@@ -105,7 +255,20 @@ int priqueue_remove(priqueue_t *q, void *ptr)
  */
 void *priqueue_remove_at(priqueue_t *q, int index)
 {
-	return 0;
+	/*temp holds value at index*/
+	void* temp = q->heap[index];
+	
+	/* replace this index with last index*/
+    q->heap[index] = q->heap[q->size-1];
+ 
+    /*Decrease heap size by 1*/
+    q->size--;
+ 
+    /*restore heap property at index value*/
+    trickleDown(q, index);
+	
+	/*return value at index*/
+	return temp;
 }
 
 
@@ -117,16 +280,17 @@ void *priqueue_remove_at(priqueue_t *q, int index)
  */
 int priqueue_size(priqueue_t *q)
 {
-	return 0;
+	return q->size;
 }
 
 
 /**
-  Destroys and frees all the memory associated with q.
+  Destroys and frees all the memory associated with q->
   
   @param q a pointer to an instance of the priqueue_t data structure
  */
 void priqueue_destroy(priqueue_t *q)
 {
-
+	/*free all data in queue*/
+	free(q->heap);
 }

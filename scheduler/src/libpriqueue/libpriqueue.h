@@ -9,7 +9,15 @@
 */
 typedef struct _priqueue_t
 {
-
+	/*number of elements stored in queue*/
+	int size;
+	
+	/*array to hold elements*/
+	void** heap;
+	
+	/*comparator to be used on insert*/
+	int (*comparator)(const void *p, const void *q);
+	
 } priqueue_t;
 
 
@@ -24,5 +32,9 @@ void * priqueue_remove_at(priqueue_t *q, int index);
 int    priqueue_size     (priqueue_t *q);
 
 void   priqueue_destroy  (priqueue_t *q);
+
+void swap(priqueue_t *q, int index1, int index2);
+int bubbleUp(priqueue_t *q, int index);
+void trickleDown(priqueue_t *q, int index);
 
 #endif /* LIBPQUEUE_H_ */
