@@ -16,6 +16,7 @@ typedef struct _job_t
 	int running_time; 
 	int remaining_time; 
 	int interupted_time; //time that a process gets interupted by another process
+	int running;
 } job_t;
 
 typedef struct _scheduler_t
@@ -36,25 +37,54 @@ scheduler_t* scheduler;
  */
 
 // First Come First Serve
-int fcfs() //DONE
+int fcfs(const void * a, const void * b) //DONE
 {
-	return 1;
+	return -1;
 }
 
 // Shortest Job First
 int sjf(const void * a, const void * b) //TODO
 {
-
-	return 0;
+	/*cast to job type*/
+	job_t* joba = (job_t*)a;
+	job_t* jobb = (job_t*)b;
+	
+	if (joba->running_time < jobb->running_time)
+	{
+		return -1;
+	}
+	else if (joba->running_time > jobb->running_time)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 // Preemptive Shortest Job First
 int psjf(const void * a, const void * b) //TODO
 {
-	return 0;
+	/*cast to job type*/
+	job_t* joba = (job_t*)a;
+	job_t* jobb = (job_t*)b;
+	
+	if (joba->remaining_time < jobb->remaining_time)
+	{
+		return -1;
+	}
+	else if (joba->remaining_time > jobb->remaining_time)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
-// Preemptive Fixed Priority
+//Fixed Priority
 int pri(const void * a, const void * b) //TODO
 {
 	return 0;
@@ -63,13 +93,11 @@ int pri(const void * a, const void * b) //TODO
 
 /**
   Initalizes the scheduler.
-
 Assumptions:
 - You may assume this will be the first scheduler function called.
 - You may assume this function will be called once once.
 - You may assume that cores is a positive, non-zero number.
 - You may assume that scheme is a valid scheduling scheme.
-
 @param cores the number of cores that is available by the scheduler. These cores will be known as currentCore(id=0), currentCore(id=1), ..., currentCore(id=cores-1).
 @param scheme  the scheduling scheme that should be used. This value will be one of the six enum values of scheme_t
  */
@@ -125,7 +153,6 @@ void scheduler_start_up(int cores, scheme_t scheme)
 
 /**
   Called when a new job arrives.
-
   If multiple cores are idle, the job should be assigned to the currentCore with the
   lowest id.
   If the job arriving should be scheduled to run during the next
@@ -134,14 +161,12 @@ void scheduler_start_up(int cores, scheme_t scheme)
   this will preempt the currently running job.
 Assumptions:
 - You may assume that every job wil have a unique arrival time.
-
 @param job_number a globally unique identification number of the job arriving.
 @param time the current time of the simulator.
 @param running_time the total number of time units this job will run before it will be finished.
 @param priority the priority of the job. (The lower the value, the higher the priority.)
 @return index of currentCore job should be scheduled on
 @return -1 if no scheduling changes should be made. 
-
  */
 int scheduler_new_job(int job_number, int time, int running_time, int priority)
 {
@@ -153,6 +178,7 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
 	job->running_time = running_time;
 	job->remaining_time = running_time;
 	job->interupted_time = 0;
+	job->running = -1;
 
 
 	// used for determining which function will get preempted next
@@ -168,6 +194,9 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
 		{
 			scheduler->currentCore[i] = job; //assigns job to idle core
 			job->interupted_time = time; //sets interupted time to current time
+			
+			job->running = i;
+			priqueue_offer(&scheduler->queue, job);
 			return i;
 		}
 
@@ -187,12 +216,10 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
 
 /**
   Called when a job has completed execution.
-
   The core_id, job_number and time parameters are provided for convenience. You may be able to calculate the values with your own data structure.
   If any job should be scheduled to run on the currentCore free'd up by the
   finished job, return the job_number of the job that should be scheduled to
   run on currentCore core_id.
-
   @param core_id the zero-based index of the currentCore where the job was located.
   @param job_number a globally unique identification number of the job.
   @param time the current time of the simulator.
@@ -202,18 +229,42 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
 int scheduler_job_finished(int core_id, int job_number, int time)
 {
 	scheduler->jobsCompleted++;
-return 0;
+	scheduler->currentCore[core_id] = NULL;
+	
+	job_t* temp;
+	
+	//pop the job out of the queue
+	for (int i = 0; i < priqueue_size(&scheduler->queue); i++)
+	{
+		if (((job_t*)priqueue_at(&scheduler->queue, i))->id == job_number)
+		{
+			temp = priqueue_remove_at(&scheduler->queue, i);
+		}
+	}
+	
+	//update the time stuff
+	int turn = time - temp->initial_time;
+	
+	scheduler->turnAroundTime += turn;
+	
+	//loop through queue checking for running = -1
+	for (int i = 0; i < priqueue_size(&scheduler->queue); i++)
+	{
+		if (((job_t*)priqueue_at(&scheduler->queue, i))->running == -1)
+		{
+			return ((job_t*)priqueue_at(&scheduler->queue, i))->id;
+		}
+	}
+	return -1;
 }
 
 
 /**
   When the scheme is set to RR, called when the quantum timer has expired
   on a currentCore.
-
   If any job should be scheduled to run on the currentCore free'd up by
   the quantum expiration, return the job_number of the job that should be
   scheduled to run on currentCore core_id.
-
   @param core_id the zero-based index of the currentCore where the quantum has expired.
   @param time the current time of the simulator. 
   @return job_number of the job that should be scheduled on currentCore cord_id
@@ -227,52 +278,51 @@ int scheduler_quantum_expired(int core_id, int time)
 
 /**
   Returns the average waiting time of all jobs scheduled by your scheduler.
-
 Assumptions:
 - This function will only be called after all scheduling is complete (all jobs that have arrived will have finished and no new jobs will arrive).
 @return the average waiting time of all jobs scheduled.
  */
 float scheduler_average_waiting_time()
 {
-	return 0.0;
+	return scheduler->waitTime / scheduler->jobsCompleted;
 }
 
 
 /**
   Returns the average turnaround time of all jobs scheduled by your scheduler.
-
 Assumptions:
 - This function will only be called after all scheduling is complete (all jobs that have arrived will have finished and no new jobs will arrive).
 @return the average turnaround time of all jobs scheduled.
  */
 float scheduler_average_turnaround_time()
 {
-	return 0.0;
+	return scheduler->turnAroundTime / scheduler->jobsCompleted;
 }
 
 
 /**
   Returns the average response time of all jobs scheduled by your scheduler.
-
 Assumptions:
 - This function will only be called after all scheduling is complete (all jobs that have arrived will have finished and no new jobs will arrive).
 @return the average response time of all jobs scheduled.
  */
 float scheduler_average_response_time()
 {
-	return 0.0;
+	return scheduler->responseTime / scheduler->jobsCompleted;
 }
 
 
 /**
   Free any memory associated with your scheduler.
-
 Assumptions:
 - This function will be the last function called in your library.
  */
 void scheduler_clean_up()
 {
-
+	//clean up mallocs
+	free(scheduler->currentCore);
+	priqueue_destroy(&scheduler->queue);
+	free(scheduler);
 }
 
 
@@ -281,15 +331,14 @@ void scheduler_clean_up()
   function will be called by the simulator after every call the simulator
   makes to your scheduler.
   In our provided output, we have implemented this function to list the jobs in the order they are to be scheduled. Furthermore, we have also listed the current state of the job (either running on a given core or idle). For example, if we have a non-preemptive algorithm and job(id=4) has began running, job(id=2) arrives with a higher priority, and job(id=1) arrives with a lower priority, the output in our sample output will be:
-
   2(-1) 4(0) 1(-1)  
-
   This function is not required and will not be graded. You may leave it
   blank if you do not find it useful.
  */
 void scheduler_show_queue()
 {
-
+	for (int i = 0; i < priqueue_size(&scheduler->queue); i++)
+	{
+		printf("%d(%d) ", ((job_t*)priqueue_at(&scheduler->queue, i))->id,  ((job_t*)priqueue_at(&scheduler->queue, i))->priority);
+	}
 }
-
-
