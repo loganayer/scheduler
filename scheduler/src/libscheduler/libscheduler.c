@@ -36,8 +36,9 @@ typedef struct _scheduler_t
 	int jobsCompleted;
 	job_t** currentCore;
 	scheme_t scheme;
-} scheduler_t;
-
+	priqueue_t queue;
+} 
+scheduler_t;
 scheduler_t* scheduler;
 
 /**
@@ -55,14 +56,16 @@ scheduler_t* scheduler;
 void scheduler_start_up(int cores, scheme_t scheme)
 {
 	//reset values on start up
-    scheduler.waitTime = 0;
-    scheduler.jobsCompleted = 0;
-    scheduler.responseTime = 0;
-    scheduler.turnAroundTime = 0;
+    scheduler->cores = cores;
+    scheduler -> waitTime = 0;
+    scheduler->responseTime = 0;
+    scheduler->turnAroundTime = 0;
+    scheduler ->jobsCompleted = 0;
+    scheduler->currentCore = (job_t **)malloc(cores * sizeof(job_t *));
     scheduler = (scheduler_t *)malloc(sizeof(scheduler_t));
-    scheduler.currentCore = (job_t **)malloc(cores * sizeof(job_t *));
-    scheduler.cores = cores;
-    scheduler.scheme= scheme;
+ 
+
+    scheduler->scheme= scheme;
 	
     //initialize which scheme {FCFS = 0, SJF, PSJF, PRI, PPRI, RR} by using priqueue
 
@@ -91,6 +94,9 @@ void scheduler_start_up(int cores, scheme_t scheme)
  */
 int scheduler_new_job(int job_number, int time, int running_time, int priority)
 {
+
+
+
 	return -1;
 }
 
