@@ -33,8 +33,4 @@ int    priqueue_size     (priqueue_t *q);
 
 void   priqueue_destroy  (priqueue_t *q);
 
-void swap(priqueue_t *q, int index1, int index2);
-int bubbleUp(priqueue_t *q, int index);
-void trickleDown(priqueue_t *q, int index);
-
 #endif /* LIBPQUEUE_H_ */

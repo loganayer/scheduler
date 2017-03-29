@@ -29,97 +29,6 @@ void priqueue_init(priqueue_t *q, int(*comparer)(const void *, const void *))
 	q->comparator = comparer;
 }
 
-void swap(priqueue_t *q, int index1, int index2)
-{
-	/*temp variable to hold value at index1*/
-	void* temp = q->heap[index1];
-	
-	/*swap value at index1 with value at index2*/
-	q->heap[index1] = q->heap[index2];
-	
-	/*swap value at index2 with temp*/
-	q->heap[index2] = temp;
-}
-
-int bubbleUp(priqueue_t *q, int index)
-{
-	/*check if elem is root*/
-	if(index == 0)
-	{
-        /*elem is root so done*/
-		return 0;
-	}
-	else
-	{
-		/*get parent of elem*/
-		int parent = (index-1)/2;
-
-		/*compare parent and child*/
-		if(q->comparator(q->heap[index], q->heap[parent]) < 0)
-		{
-			/*swap if violation of max heap*/
-			swap(q, index, parent);
-			
-			/*then recurse to check parent*/
-			return bubbleUp(q, parent);
-		}
-		else
-		{
-			return index;
-		}
-	}
-}
-
-void trickleDown(priqueue_t *q, int index)
-{
-	/*get children indices*/
-	int left = 2*index + 1;
-    int right = 2*index + 2;
-
-	/*check if children*/
-    if (left >= q->size)
-	{
-		/*index is a leaf so we finish*/
-	}
-	else
-	{
-		/*set base case*/
-		int max = index;
-
-		/*compare with left child*/
-		if (q->comparator(q->heap[max], q->heap[left]) > 0)
-		{
-			/*update max index*/
-			max = left;
-		}
-		
-		/*next make sure there is a right child*/
-		if(right < q->size)
-		{
-			if (q->comparator(q->heap[max], q->heap[right]) > 0)
-			{
-				/*update max index*/
-				max = right;
-			}
-		}
-		else
-		{
-			/*no more children so we finish*/
-		}
-
-		/*compare if we need to swap*/
-		if(max != index)
-		{
-			/*need to swap*/
-			swap(q, max, index);
-			
-			/*recurse from swapped max*/
-			trickleDown(q, max);
-		}
-	}
-}
-
-
 /**
   Inserts the specified element into this priority queue.
 
@@ -135,8 +44,19 @@ int priqueue_offer(priqueue_t *q, void *ptr)
 	/*increase size*/
 	q->size++;
 
-	/*make sure heap property is still true*/
-	return bubbleUp(q, q->size-1);
+	/*qsort the array*/
+	qsort(q->heap, q->size, sizeof(void*), q->comparator);
+	
+	for (int i = 0; i < q->size; i++)
+	{
+		if (q->heap[i] == ptr)
+		{
+			return i;
+		}
+	}
+	
+	/*shouldn't happen*/
+	return -1;
 }
 
 
@@ -229,9 +149,6 @@ int priqueue_remove(priqueue_t *q, void *ptr)
 			/*decrement size*/
 			q->size--;
 			
-			/*insure heap property still in order*/
-			trickleDown(q, i);
-			
 			/*decrement i so we check the again value as there
 			is a small chance this value was replaced with value*/
 			i--;
@@ -239,6 +156,9 @@ int priqueue_remove(priqueue_t *q, void *ptr)
 			count++;
 		}
 	}
+	
+	/*qsort again to make sure order is upheld*/
+	qsort(q->heap, q->size, sizeof(void*), q->comparator);
 	
 	return count;
 }
@@ -264,8 +184,8 @@ void *priqueue_remove_at(priqueue_t *q, int index)
     /*Decrease heap size by 1*/
     q->size--;
  
-    /*restore heap property at index value*/
-    trickleDown(q, index);
+    /*qsort to restore order*/
+	qsort(q->heap, q->size, sizeof(void*), q->comparator);
 	
 	/*return value at index*/
 	return temp;
