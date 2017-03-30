@@ -42,19 +42,25 @@ scheduler_t* scheduler;
 int fcfs(const void * a, const void * b) //DONE
 {
 	/*cast to job type*/
-	job_t* joba = (job_t*)a;
-	job_t* jobb = (job_t*)b;
+	job_t* joba = *(job_t**)a;
+	job_t* jobb = *(job_t**)b;
+	
+	printf("%d\n", joba->initial_time);
+	printf("%d\n", jobb->initial_time);
 
-	if (joba->initial_time > jobb->initial_time)
+	if (joba->initial_time < jobb->initial_time)
 	{
+		printf("%d\n", -1);
 		return -1;
 	}
-	else if (joba->initial_time < jobb->initial_time)
+	else if (joba->initial_time > jobb->initial_time)
 	{
+		printf("%d\n", 1);
 		return 1;
 	}
 	else
 	{
+		printf("%d\n", 0);
 		return 0;
 	}
 }
@@ -62,8 +68,8 @@ int fcfs(const void * a, const void * b) //DONE
 int rr(const void * a, const void * b) //DONE
 {
 	/*cast to job type*/
-	job_t* joba = (job_t*)a;
-	job_t* jobb = (job_t*)b;
+	job_t* joba = *(job_t**)a;
+	job_t* jobb = *(job_t**)b;
 
 	if (joba-> new > jobb->new)
 	{
@@ -82,8 +88,8 @@ int rr(const void * a, const void * b) //DONE
 int sjf(const void * a, const void * b) //TODO
 {
 	/*cast to job type*/
-	job_t* joba = (job_t*)a;
-	job_t* jobb = (job_t*)b;
+	job_t* joba = *(job_t**)a;
+	job_t* jobb = *(job_t**)b;
 
 	if (joba->running_time < jobb->running_time)
 	{
@@ -103,8 +109,8 @@ int sjf(const void * a, const void * b) //TODO
 int psjf(const void * a, const void * b) //TODO
 {
 	/*cast to job type*/
-	job_t* joba = (job_t*)a;
-	job_t* jobb = (job_t*)b;
+	job_t* joba = *(job_t**)a;
+	job_t* jobb = *(job_t**)b;
 
 	if (joba->remaining_time < jobb->remaining_time)
 	{
@@ -123,13 +129,15 @@ int psjf(const void * a, const void * b) //TODO
 //Fixed Priority
 int pri(const void * a, const void * b) //TODO
 {
-	job_t* joba = (job_t*)a;
-	job_t* jobb = (job_t*)b;
-	if (joba->priority < jobb->priority)
+	/*cast to job type*/
+	job_t* joba = *(job_t**)a;
+	job_t* jobb = *(job_t**)b;
+	
+	if (joba->priority > jobb->priority)
 	{
 		return 1;
 	}
-	else if (joba->priority > jobb->priority)
+	else if (joba->priority < jobb->priority)
 	{
 		return -1;
 	}
@@ -425,6 +433,6 @@ void scheduler_show_queue()
 {
 	for (int i = 0; i < priqueue_size(&scheduler->queue); i++)
 	{
-		printf("%d(%d) ", ((job_t*)priqueue_at(&scheduler->queue, i))->id,  ((job_t*)priqueue_at(&scheduler->queue, i))->priority);
+		printf("%d(%d)(length %d) ", ((job_t*)priqueue_at(&scheduler->queue, i))->id,  ((job_t*)priqueue_at(&scheduler->queue, i))->priority, ((job_t*)priqueue_at(&scheduler->queue, i))->running_time);
 	}
 }
