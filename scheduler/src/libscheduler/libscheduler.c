@@ -234,19 +234,13 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
 	job->initial_time = time;
 	job->running_time = running_time;
 	job->remaining_time = running_time;
-	job->interupted_time = 0;
+	job->interupted_time = -1;
 	job->running = -1;
 	job->new = time;
-
-
-	// used for determining which function will get preempted next
-	int max_priority = -1;
-	int max_pid = -1;
-
+	job->first = -1;
 
 	for( int i=0; i<scheduler->cores; i++ )
 	{
-
 		// assigns the job to an idle core
 		if(scheduler->currentCore[i] == NULL)
 		{
@@ -258,15 +252,38 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
 			priqueue_offer(&scheduler->queue, job);
 			return i;
 		}
-
-		if ( ( scheduler->currentCore[i]->priority > max_priority ) || (scheduler->currentCore[i]->priority == max_priority && scheduler->currentCore[i]->id > max_pid ) )
+	}
+	
+	//check for a preemptive scheduler
+	if (scheduler->scheme == PPRI)
+	{
+		int min = 0;
+		
+		//loop through cores and find the core with min priority
+		for( int i=1; i<scheduler->cores; i++ )
 		{
-			max_priority = scheduler->currentCore[i]->priority;
-			max_pid = scheduler->currentCore[i]->id;
+			if (pri(&scheduler->currentCore[min], &scheduler->currentCore[i]) < 0)
+			{
+				min = i;
+			}
+		}
+		
+		//if the current job could replace the other job
+		if (pri(&job, &scheduler->currentCore[min]) < 0)
+		{
+			scheduler->currentCore[min]->interupted_time = time;
+			scheduler->currentCore[min]->running = -1;
+			
+			scheduler->currentCore[min] = job; //assigns job to idle core
+			job->interupted_time = time; //sets interupted time to current time
+
+			job->running = 0;
+			job->first = time;
+			priqueue_offer(&scheduler->queue, job);
+			return min;
 		}
 	}
-
-
+	
 	priqueue_offer(&scheduler->queue, job);
 
 	return -1;
@@ -305,6 +322,7 @@ int scheduler_job_finished(int core_id, int job_number, int time)
 	//update the time stuff
 	int turn = time - temp->initial_time;
 	int wait = time - temp->initial_time - temp->running_time;
+	printf("wait first %d initial %d ", temp->first, temp->initial_time);
 	int response = temp->first - temp->initial_time;
 
 
@@ -318,7 +336,10 @@ int scheduler_job_finished(int core_id, int job_number, int time)
 		if (((job_t*)priqueue_at(&scheduler->queue, i))->running == -1)
 		{
 			((job_t*)priqueue_at(&scheduler->queue, i))->running = core_id;
-			((job_t*)priqueue_at(&scheduler->queue, i))->first = time;
+			if (((job_t*)priqueue_at(&scheduler->queue, i))->first == -1)
+			{
+				((job_t*)priqueue_at(&scheduler->queue, i))->first = time;
+			}
 			scheduler->currentCore[core_id] = (job_t*)priqueue_at(&scheduler->queue, i);
 			return ((job_t*)priqueue_at(&scheduler->queue, i))->id;
 		}
@@ -433,6 +454,6 @@ void scheduler_show_queue()
 {
 	for (int i = 0; i < priqueue_size(&scheduler->queue); i++)
 	{
-		printf("%d(%d)(length %d) ", ((job_t*)priqueue_at(&scheduler->queue, i))->id,  ((job_t*)priqueue_at(&scheduler->queue, i))->priority, ((job_t*)priqueue_at(&scheduler->queue, i))->running_time);
+		printf("%d(%d) ", ((job_t*)priqueue_at(&scheduler->queue, i))->id,  ((job_t*)priqueue_at(&scheduler->queue, i))->priority);
 	}
 }
