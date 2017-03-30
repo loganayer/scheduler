@@ -283,6 +283,34 @@ int scheduler_new_job(int job_number, int time, int running_time, int priority)
 			return min;
 		}
 	}
+	else if (scheduler->scheme == PSJF)
+	{
+		int min = 0;
+		
+		//loop through cores and find the core with min priority
+		for( int i=1; i<scheduler->cores; i++ )
+		{
+			if (psjf(&scheduler->currentCore[min], &scheduler->currentCore[i]) < 0)
+			{
+				min = i;
+			}
+		}
+		
+		//if the current job could replace the other job
+		if (psjf(&job, &scheduler->currentCore[min]) < 0)
+		{
+			scheduler->currentCore[min]->interupted_time = time;
+			scheduler->currentCore[min]->running = -1;
+			
+			scheduler->currentCore[min] = job; //assigns job to idle core
+			job->interupted_time = time; //sets interupted time to current time
+
+			job->running = 0;
+			job->first = time;
+			priqueue_offer(&scheduler->queue, job);
+			return min;
+		}
+	}
 	
 	priqueue_offer(&scheduler->queue, job);
 
